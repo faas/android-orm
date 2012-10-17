@@ -11,9 +11,11 @@ public class Configuration
 
 	private boolean foreignKeyEnabled = false;
 
-	public Configuration()
-	{
+	private Session session;
 
+	public Configuration(Session session)
+	{
+		this.setSession(session);
 	}
 
 	public void addAnnotatedClass(Class< ? > clazz)
@@ -44,5 +46,15 @@ public class Configuration
 	public void setForeignKeyEnabled(boolean foreignKeyEnabled)
 	{
 		this.foreignKeyEnabled = foreignKeyEnabled;
+	}
+
+	public Session getSession()
+	{
+		return session;
+	}
+
+	public void setSession(Session session)
+	{
+		this.session = session;
 	}
 }

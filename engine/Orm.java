@@ -6,6 +6,7 @@ import java.util.List;
 
 import nl.spikey.orm.Configuration;
 import nl.spikey.orm.IdObject;
+import nl.spikey.orm.Session;
 import nl.spikey.orm.annotations.Column;
 import nl.spikey.orm.annotations.Entity;
 import nl.spikey.orm.annotations.Id;
@@ -14,7 +15,6 @@ import nl.spikey.orm.criteria.Criteria;
 import nl.spikey.orm.criteria.Criterion;
 import android.content.ContentValues;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 public class Orm
@@ -28,6 +28,13 @@ public class Orm
 	public Orm(Configuration configuration)
 	{
 		this.configuration = configuration;
+	}
+
+	private Session getSession()
+	{
+		if (configuration != null)
+			return configuration.getSession();
+		return null;
 	}
 
 	private static boolean isNull(String enumConst)
@@ -143,7 +150,7 @@ public class Orm
 		return values;
 	}
 
-	public Cursor selectQuery(SQLiteDatabase db, Criteria criteria)
+	public Cursor selectQuery(Criteria criteria)
 	{
 		Class< ? extends IdObject> clazz = criteria.getClzz();
 		if (!clazz.isAnnotationPresent(Entity.class))
@@ -182,8 +189,8 @@ public class Orm
 		String orderBy = criteria.getOrderBy();
 		String limit = criteria.getLimitString();
 
-		return db.query(table, columns, selection, selectionArgs.toArray(new String[0]), groupBy,
-			having, orderBy, limit);
+		return getSession().query(table, columns, selection, selectionArgs.toArray(new String[0]),
+			groupBy, having, orderBy, limit);
 	}
 
 	private List<Class< ? >> getSubClasses(Class< ? > clazz)
@@ -216,19 +223,19 @@ public class Orm
 		return clazz.getSimpleName();
 	}
 
-	public int count(SQLiteDatabase db, Criteria criteria)
+	public int count(Criteria criteria)
 	{
-		Cursor cursor = selectQuery(db, criteria);
+		Cursor cursor = selectQuery(criteria);
 
 		if (cursor != null)
 			return cursor.getCount();
 		return 0;
 	}
 
-	public <T extends IdObject> List<T> list(SQLiteDatabase db, Criteria criteria)
+	public <T extends IdObject> List<T> list(Criteria criteria)
 	{
 
-		Cursor cursor = selectQuery(db, criteria);
+		Cursor cursor = selectQuery(criteria);
 
 		List<T> resultList = new ArrayList<T>();
 		if (cursor != null && cursor.moveToFirst())
@@ -464,10 +471,10 @@ public class Orm
 		return query;
 	}
 
-	public void dropTable(SQLiteDatabase db, String tableName)
+	public void dropTable(String tableName)
 	{
 		String query = "DROP TABLE IF EXISTS " + tableName;
-		db.execSQL(query);
+		getSession().execSQL(query);
 	}
 
 	/**
@@ -479,7 +486,7 @@ public class Orm
 	 * all columns of the subclasses of entityClasses will have to be added manually using
 	 * the addCollumnFor method.
 	 */
-	public void createTable(SQLiteDatabase db, Class< ? extends IdObject> clazz)
+	public void createTable(Class< ? extends IdObject> clazz)
 	{
 		String query = "CREATE TABLE " + getTableName(clazz) + "(" + DTYPE + " TEXT";
 		for (Field field : getTableColumnFields(clazz))
@@ -490,17 +497,16 @@ public class Orm
 				query += " PRIMARY KEY";
 		}
 		query += ")";
-		db.execSQL(query);
+		getSession().execSQL(query);
 	}
 
-	public void dropAndRecreateTable(SQLiteDatabase db, Class< ? extends IdObject> clazz)
+	public void dropAndRecreateTable(Class< ? extends IdObject> clazz)
 	{
-		dropTable(db, clazz.getSimpleName());
-		createTable(db, clazz);
+		dropTable(clazz.getSimpleName());
+		createTable(clazz);
 	}
 
-	public void addColumnFor(SQLiteDatabase db, Class< ? extends IdObject> clazz,
-			String propertyName)
+	public void addColumnFor(Class< ? extends IdObject> clazz, String propertyName)
 	{
 		String query = "ALTER TABLE " + getTableName(clazz) + " ADD COLUMN";
 
@@ -511,7 +517,7 @@ public class Orm
 				query += generateColumnNameAndConstraint(field);
 			}
 		}
-		db.execSQL(query);
+		getSession().execSQL(query);
 	}
 
 	// TODO misschien nog een rename column?
@@ -521,9 +527,9 @@ public class Orm
 	 * referencing to this object will have to be deleted first, although this will not be
 	 * checked unless you have enabled foreign keys (default disabled)
 	 */
-	public <T extends IdObject> boolean deleteObject(SQLiteDatabase db, T object)
+	public <T extends IdObject> boolean deleteObject(T object)
 	{
-		if (object == null || db == null)
+		if (object == null || getSession() == null)
 			return false;
 		String whereClause = "";
 		for (Field field : getTableColumnFields(object.getClass()))
@@ -532,8 +538,8 @@ public class Orm
 				whereClause = getColumnName(field) + "=?";
 		}
 		int result =
-			db.delete(getTableName(object.getClass()), whereClause, new String[] {object.getId()
-				.toString()});
+			getSession().delete(getTableName(object.getClass()), whereClause,
+				new String[] {object.getId().toString()});
 
 		return (result == 1);
 	}
@@ -547,12 +553,13 @@ public class Orm
 	 * otherwise other wise it will result in a ObjectNotSavedException because the
 	 * referenced object is not saved (has no id).
 	 */
-	public <T extends IdObject> boolean saveObject(SQLiteDatabase db, T object)
+	public <T extends IdObject> boolean saveObject(T object)
 	{
-		if (object == null || db == null)
+		if (object == null || getSession() == null)
 			return false;
 		Long result =
-			db.insert(getTableName(object.getClass()), null, getContentValuesForObject(object));
+			getSession().insert(getTableName(object.getClass()), null,
+				getContentValuesForObject(object));
 		if (result != null)
 			object.setId(result);
 
@@ -567,9 +574,9 @@ public class Orm
 	 * otherwise other wise it will result in a ObjectNotSavedException because the
 	 * referenced object is not saved (has no id).
 	 */
-	public <T extends IdObject> boolean updateObject(SQLiteDatabase db, T object)
+	public <T extends IdObject> boolean updateObject(T object)
 	{
-		if (object == null || db == null)
+		if (object == null || getSession() == null)
 			return false;
 		String whereClause = "";
 		for (Field field : getTableColumnFields(object.getClass()))
@@ -578,7 +585,7 @@ public class Orm
 				whereClause = getColumnName(field) + "=?";
 		}
 		int result =
-			db.update(getTableName(object.getClass()), getContentValuesForObject(object),
+			getSession().update(getTableName(object.getClass()), getContentValuesForObject(object),
 				whereClause, new String[] {object.getId().toString()});
 
 		return (result == 1);
@@ -593,13 +600,13 @@ public class Orm
 	 * objects first otherwise other wise it will result in a ObjectNotSavedException
 	 * because the referenced object is not saved (has no id).
 	 */
-	public <T extends IdObject> boolean saveOrUpdateObject(SQLiteDatabase db, T object)
+	public <T extends IdObject> boolean saveOrUpdateObject(T object)
 	{
-		if (object == null || db == null)
+		if (object == null || getSession() == null)
 			return false;
 		if (object.getId() != null && object.getId().longValue() > 0)
-			return updateObject(db, object);
+			return updateObject(object);
 		else
-			return saveObject(db, object);
+			return saveObject(object);
 	}
 }
