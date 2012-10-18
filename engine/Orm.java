@@ -226,10 +226,11 @@ public class Orm
 	public int count(Criteria criteria)
 	{
 		Cursor cursor = selectQuery(criteria);
-
+		int result = 0;
 		if (cursor != null)
-			return cursor.getCount();
-		return 0;
+			result = cursor.getCount();
+		getSession().close();
+		return result;
 	}
 
 	public <T extends IdObject> List<T> list(Criteria criteria)
@@ -249,6 +250,7 @@ public class Orm
 
 			cursor.close();
 		}
+		getSession().close();
 
 		return resultList;
 	}
