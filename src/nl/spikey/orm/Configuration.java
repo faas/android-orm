@@ -11,6 +11,9 @@ public class Configuration
 
 	private boolean foreignKeyEnabled = false;
 
+	/**
+	 * The session is used to call de database methodes
+	 */
 	private Session session;
 
 	public Configuration(Session session)

@@ -9,5 +9,4 @@ public class ObjectNotSavedException extends RuntimeException
 	{
 		super(detailMessage);
 	}
-
 }

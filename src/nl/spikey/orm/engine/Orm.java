@@ -276,8 +276,6 @@ public class Orm
 
 					try
 					{
-						// TODO: Alle Boolean Integer Long en Double objecten moeten nog
-						// null checks omheen.
 						if (typeClass.isEnum())
 						{
 							String enumConst =
@@ -371,8 +369,9 @@ public class Orm
 						}
 						else if (typeClass.equals(Boolean.class) || typeClass.equals(boolean.class))
 						{
-							field.setBoolean(object, cursor.getShort(cursor.getColumnIndex(field
-								.getName())) == 1 ? true : false);
+							Short boolVar = cursor.getShort(cursor.getColumnIndex(field.getName()));
+							if (boolVar != null)
+								field.setBoolean(object, boolVar == 0 ? false : true);
 						}
 						else if (field.getDeclaringClass().isAssignableFrom(IdObject.class))
 						{
