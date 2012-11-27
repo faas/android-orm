@@ -1,5 +1,8 @@
 package nl.spikey.orm.criteria;
 
+import java.util.Arrays;
+import java.util.List;
+
 import nl.spikey.orm.IdObject;
 
 class SimpleExpression implements Criterion
@@ -28,8 +31,8 @@ class SimpleExpression implements Criterion
 	}
 
 	@Override
-	public String getArgument()
+	public List<String> getArguments()
 	{
-		return value;
+		return Arrays.asList(value);
 	}
 }

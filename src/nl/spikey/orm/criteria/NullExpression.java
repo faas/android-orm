@@ -1,5 +1,7 @@
 package nl.spikey.orm.criteria;
 
+import java.util.List;
+
 class NullExpression implements Criterion
 {
 	private String property;
@@ -16,7 +18,7 @@ class NullExpression implements Criterion
 	}
 
 	@Override
-	public String getArgument()
+	public List<String> getArguments()
 	{
 		return null;
 	}

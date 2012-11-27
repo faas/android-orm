@@ -1,5 +1,7 @@
 package nl.spikey.orm.criteria;
 
+import java.util.List;
+
 class NotNullExpression implements Criterion
 {
 	private String property;
@@ -16,7 +18,7 @@ class NotNullExpression implements Criterion
 	}
 
 	@Override
-	public String getArgument()
+	public List<String> getArguments()
 	{
 		return null;
 	}

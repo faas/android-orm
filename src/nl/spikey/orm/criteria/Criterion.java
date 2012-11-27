@@ -1,5 +1,7 @@
 package nl.spikey.orm.criteria;
 
+import java.util.List;
+
 public interface Criterion
 {
 	/**
@@ -12,6 +14,6 @@ public interface Criterion
 	 * Returns the arguments needed in the expression. Return null when there are no
 	 * arguments (no '?' is present in the expression).
 	 */
-	public String getArgument();
+	public List<String> getArguments();
 
 }

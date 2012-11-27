@@ -2,6 +2,8 @@ package nl.spikey.orm.criteria;
 
 import java.util.Collection;
 
+import nl.spikey.orm.criteria.Junction.Nature;
+
 public class Restrictions
 {
 
@@ -173,5 +175,18 @@ public class Restrictions
 		return new NotNullExpression(property);
 	}
 
-	// TODO: NullExpression, NotNullExpression, InExpression, NotInExpression
+	/**
+	 * Return the disjuction of two expressions
+	 * 
+	 * @return Criterion
+	 */
+	public static LogicalExpression or(Criterion criterion1, Criterion criterion2)
+	{
+		return new LogicalExpression(criterion1, criterion2, "OR");
+	}
+
+	public static Junction disjunction()
+	{
+		return new Junction(Nature.OR);
+	}
 }

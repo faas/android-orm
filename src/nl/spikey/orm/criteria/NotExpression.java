@@ -1,5 +1,7 @@
 package nl.spikey.orm.criteria;
 
+import java.util.List;
+
 class NotExpression implements Criterion
 {
 
@@ -17,8 +19,8 @@ class NotExpression implements Criterion
 	}
 
 	@Override
-	public String getArgument()
+	public List<String> getArguments()
 	{
-		return criterion.getArgument();
+		return criterion.getArguments();
 	}
 }

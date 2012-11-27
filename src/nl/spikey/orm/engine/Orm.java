@@ -121,6 +121,10 @@ public class Orm
 					else
 						values.put(getColumnName(field), field.getBoolean(object));
 				}
+				else if (typeClass.equals(byte.class))
+				{
+					values.put(getColumnName(field), field.getByte(object));
+				}
 				else if (field.getDeclaringClass().isAssignableFrom(IdObject.class))
 				{
 					if (field.get(object) == null)
@@ -178,8 +182,8 @@ public class Orm
 		for (Criterion criterion : criteria.getCriterion())
 		{
 			selection += criterion.getExpression() + " AND ";
-			if (criterion.getArgument() != null)
-				selectionArgs.add(criterion.getArgument());
+			if (criterion.getArguments() != null && !criterion.getArguments().isEmpty())
+				selectionArgs.addAll(criterion.getArguments());
 		}
 		if (selection.length() > 4)
 			selection = selection.substring(0, selection.length() - 5);
@@ -373,6 +377,12 @@ public class Orm
 							if (boolVar != null)
 								field.setBoolean(object, boolVar == 0 ? false : true);
 						}
+						else if (typeClass.equals(byte.class))
+						{
+							byte[] byteVar = cursor.getBlob(cursor.getColumnIndex(field.getName()));
+							if (byteVar != null && byteVar.length > 0)
+								field.set(object, byteVar);
+						}
 						else if (field.getDeclaringClass().isAssignableFrom(IdObject.class))
 						{
 							IdObject entity = (IdObject) field.getDeclaringClass().newInstance();
@@ -455,6 +465,8 @@ public class Orm
 			query += " TEXT";
 		else if (typeClass.equals(Boolean.class) || typeClass.equals(boolean.class))
 			query += " INTEGER";
+		else if (typeClass.equals(byte.class))
+			query += " BLOB";
 		else if (typeClass.isEnum())
 			query += " TEXT";
 		else if (field.getDeclaringClass().isAssignableFrom(IdObject.class))

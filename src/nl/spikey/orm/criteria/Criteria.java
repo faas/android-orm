@@ -1,6 +1,7 @@
 package nl.spikey.orm.criteria;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -129,18 +130,45 @@ public class Criteria
 			criterion.add(Restrictions.notIn(property, values));
 	}
 
-	public void addIsNull(String expression, Boolean isNull)
+	public void addIsNull(String property, Boolean isNull)
 	{
 		if (isNull != null)
 		{
 			if (isNull.booleanValue())
 			{
-				criterion.add(Restrictions.isNull(expression));
+				criterion.add(Restrictions.isNull(property));
 			}
 			else
 			{
-				criterion.add(Restrictions.isNotNull(expression));
+				criterion.add(Restrictions.isNotNull(property));
 			}
+		}
+	}
+
+	public void addOrEquals(String property1, String property2, Object value)
+	{
+		if (value != null)
+		{
+			criterion.add(Restrictions.or(Restrictions.eq(property1, value),
+				Restrictions.eq(property2, value)));
+		}
+	}
+
+	public void addOrs(Criterion... list)
+	{
+		addOrs(Arrays.asList(list));
+	}
+
+	public void addOrs(List<Criterion> list)
+	{
+		if (!list.isEmpty())
+		{
+			Junction ors = Restrictions.disjunction();
+			for (Criterion curCrit : list)
+			{
+				ors.add(curCrit);
+			}
+			criterion.add(ors);
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package nl.spikey.orm.criteria;
 
 import java.util.Collection;
+import java.util.List;
 
 import nl.spikey.orm.IdObject;
 
@@ -34,7 +35,7 @@ class InExpression implements Criterion
 	}
 
 	@Override
-	public String getArgument()
+	public List<String> getArguments()
 	{
 		// In Expressions have no Arguments
 		return null;
