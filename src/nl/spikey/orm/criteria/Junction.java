@@ -83,7 +83,7 @@ public class Junction implements Criterion
 
 		public String getOperator()
 		{
-			return name().toLowerCase();
+			return name().toUpperCase();
 		}
 	}
 

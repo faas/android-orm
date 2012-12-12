@@ -7,7 +7,8 @@ import java.util.Set;
 
 public class Configuration
 {
-	private Map<String, Class< ? >> classes = new HashMap<String, Class< ? >>();
+	private Map<String, Class< ? extends IdObject>> classes =
+		new HashMap<String, Class< ? extends IdObject>>();
 
 	private boolean foreignKeyEnabled = false;
 
@@ -21,12 +22,12 @@ public class Configuration
 		this.setSession(session);
 	}
 
-	public void addAnnotatedClass(Class< ? > clazz)
+	public void addAnnotatedClass(Class< ? extends IdObject> clazz)
 	{
 		classes.put(clazz.getSimpleName(), clazz);
 	}
 
-	public Map<String, Class< ? >> getClassMap()
+	public Map<String, Class< ? extends IdObject>> getClassMap()
 	{
 		return classes;
 	}
@@ -36,7 +37,7 @@ public class Configuration
 		return classes.keySet();
 	}
 
-	public Collection<Class< ? >> getClasses()
+	public Collection<Class< ? extends IdObject>> getClasses()
 	{
 		return classes.values();
 	}

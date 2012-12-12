@@ -30,130 +30,6 @@ public class Orm
 		this.configuration = configuration;
 	}
 
-	private Session getSession()
-	{
-		if (configuration != null)
-			return configuration.getSession();
-		return null;
-	}
-
-	private static boolean isNull(String enumConst)
-	{
-		if (enumConst == null || enumConst.toLowerCase().equals(NULL.toLowerCase()))
-			return true;
-		return false;
-	}
-
-	private List<Field> getTableColumnFields(Class< ? > clazz)
-	{
-		List<Field> properties = new ArrayList<Field>();
-		while (clazz.isAnnotationPresent(MappedSuperclass.class)
-			|| clazz.isAnnotationPresent(Entity.class))
-		{
-			Field[] fields = clazz.getDeclaredFields();
-
-			for (Field field : fields)
-			{
-				if (field.isAnnotationPresent(Column.class))
-				{
-					properties.add(field);
-				}
-			}
-			clazz = clazz.getSuperclass();
-		}
-		return properties;
-	}
-
-	private <T extends IdObject> ContentValues getContentValuesForObject(T object)
-	{
-		ContentValues values = new ContentValues();
-		values.put(DTYPE, object.getClass().getSimpleName());
-		for (Field field : getTableColumnFields(object.getClass()))
-		{
-			if (field.isAnnotationPresent(Id.class))
-				continue;
-
-			boolean flag = field.isAccessible();
-			field.setAccessible(true);
-
-			try
-			{
-				Class< ? > typeClass = field.getType();
-				if (typeClass.isEnum())
-				{
-					if (field.get(object) == null)
-						values.putNull(getColumnName(field));
-					else
-						values.put(getColumnName(field), field.get(object).toString());
-				}
-				else if (typeClass.equals(Long.class) || typeClass.equals(long.class))
-				{
-					if (typeClass.equals(Long.class) && field.get(object) == null)
-						values.putNull(getColumnName(field));
-					else
-						values.put(getColumnName(field), field.getLong(object));
-				}
-				else if (typeClass.equals(Integer.class) || typeClass.equals(int.class))
-				{
-					if (typeClass.equals(Integer.class) && field.get(object) == null)
-						values.putNull(getColumnName(field));
-					else
-						values.put(getColumnName(field), field.getInt(object));
-				}
-				else if (typeClass.equals(Double.class) || typeClass.equals(double.class))
-				{
-					if (typeClass.equals(Double.class) && field.get(object) == null)
-						values.putNull(getColumnName(field));
-					else
-						values.put(getColumnName(field), field.getDouble(object));
-				}
-				else if (typeClass.equals(String.class))
-				{
-					if (field.get(object) == null)
-						values.putNull(getColumnName(field));
-					else
-						values.put(getColumnName(field), field.get(object).toString());
-				}
-				else if (typeClass.equals(Boolean.class) || typeClass.equals(boolean.class))
-				{
-					if (typeClass.equals(Boolean.class) && field.get(object) == null)
-						values.putNull(getColumnName(field));
-					else
-						values.put(getColumnName(field), field.getBoolean(object));
-				}
-				else if (typeClass.equals(byte.class))
-				{
-					values.put(getColumnName(field), field.getByte(object));
-				}
-				else if (field.getDeclaringClass().isAssignableFrom(IdObject.class))
-				{
-					if (field.get(object) == null)
-						values.putNull(getColumnName(field));
-					else
-					{
-						IdObject entity = (IdObject) field.get(object);
-						if (entity.getId() == null)
-							throw new ObjectNotSavedException("object reference not saved");
-						values.put(getColumnName(field), entity.getId());
-					}
-				}
-			}
-			catch (IllegalAccessException accEx)
-			{
-				Log.d(Orm.class.getSimpleName() + "(" + accEx.getStackTrace()[3].getLineNumber()
-					+ ")", "illegal access: " + accEx.getMessage());
-			}
-			catch (IllegalArgumentException argEx)
-			{
-				Log.d(Orm.class.getSimpleName() + "(" + argEx.getStackTrace()[3].getLineNumber()
-					+ ")", "illegal arguments: " + argEx.getMessage());
-			}
-
-			field.setAccessible(flag);
-		}
-		return values;
-	}
-
 	public Cursor selectQuery(Criteria criteria)
 	{
 		Class< ? extends IdObject> clazz = criteria.getClzz();
@@ -197,36 +73,6 @@ public class Orm
 			groupBy, having, orderBy, limit);
 	}
 
-	private List<Class< ? >> getSubClasses(Class< ? > clazz)
-	{
-		List<Class< ? >> result = new ArrayList<Class< ? >>();
-		result.add(clazz);
-
-		for (Class< ? > clzz : configuration.getClasses())
-		{
-			if (clazz.equals(clzz.getSuperclass()))
-			{
-				result.addAll(getSubClasses(clzz));
-			}
-		}
-
-		return result;
-	}
-
-	private String getColumnName(Field field)
-	{
-		if (!field.getAnnotation(Column.class).name().isEmpty())
-			return field.getName();
-		return field.getName();
-	}
-
-	private String getTableName(Class< ? > clazz)
-	{
-		if (clazz.getSuperclass().isAnnotationPresent(Entity.class))
-			return getTableName(clazz.getSuperclass());
-		return clazz.getSimpleName();
-	}
-
 	public int count(Criteria criteria)
 	{
 		Cursor cursor = selectQuery(criteria);
@@ -259,231 +105,6 @@ public class Orm
 		return resultList;
 	}
 
-	private <T extends IdObject> T fillObject(Cursor cursor)
-	{
-		T object = getNewInstanceOf(cursor.getString(cursor.getColumnIndex(DTYPE)));
-
-		Class< ? > clzz = object.getClass();
-		while (clzz.isAnnotationPresent(MappedSuperclass.class)
-			|| clzz.isAnnotationPresent(nl.spikey.orm.annotations.Entity.class))
-		{
-			Field[] fields = clzz.getDeclaredFields();
-
-			for (Field field : fields)
-			{
-				if (field.isAnnotationPresent(Column.class))
-				{
-					boolean flag = field.isAccessible();
-					field.setAccessible(true);
-
-					Class< ? > typeClass = field.getType();
-
-					try
-					{
-						if (typeClass.isEnum())
-						{
-							String enumConst =
-								cursor.getString(cursor.getColumnIndex(getColumnName(field)));
-							if (enumConst != null && !isNull(enumConst))
-							{
-								@SuppressWarnings({"unchecked", "rawtypes"})
-								Enum< ? > enumValue =
-									Enum.valueOf((Class< ? extends Enum>) typeClass, enumConst);
-								field.set(object, enumValue);
-							}
-						}
-						else if (typeClass.equals(Long.class) || typeClass.equals(long.class))
-						{
-							Long longVar = null;
-							if (typeClass.equals(Long.class))
-							{
-								String stringValue =
-									cursor.getString(cursor.getColumnIndex(getColumnName(field)));
-								if (!isNull(stringValue))
-									longVar = Long.getLong(stringValue);
-							}
-							else
-							{
-								longVar =
-									cursor.getLong(cursor.getColumnIndex(getColumnName(field)));
-							}
-							if (longVar != null)
-								field.set(object, longVar);
-						}
-						else if (typeClass.equals(Integer.class) || typeClass.equals(int.class))
-						{
-							Integer intVar = null;
-							if (typeClass.equals(Integer.class))
-							{
-								String stringValue =
-									cursor.getString(cursor.getColumnIndex(getColumnName(field)));
-								if (!isNull(stringValue))
-									intVar = Integer.getInteger(stringValue);
-							}
-							else
-							{
-								intVar = cursor.getInt(cursor.getColumnIndex(getColumnName(field)));
-							}
-							if (intVar != null)
-								field.setInt(object, intVar.intValue());
-						}
-						else if (typeClass.equals(Double.class) || typeClass.equals(double.class))
-						{
-
-							Double doubleVar = null;
-							if (typeClass.equals(Double.class))
-							{
-								String stringValue =
-									cursor.getString(cursor.getColumnIndex(getColumnName(field)));
-								if (!isNull(stringValue))
-									doubleVar = Double.valueOf(stringValue);
-							}
-							else
-							{
-								doubleVar =
-									cursor.getDouble(cursor.getColumnIndex(getColumnName(field)));
-							}
-							if (doubleVar != null)
-								field.setDouble(object, doubleVar.doubleValue());
-						}
-						else if (typeClass.equals(Float.class) || typeClass.equals(float.class))
-						{
-
-							Float floatVar = null;
-							if (typeClass.equals(Float.class))
-							{
-								String stringValue =
-									cursor.getString(cursor.getColumnIndex(getColumnName(field)));
-								if (!isNull(stringValue))
-									floatVar = Float.valueOf(stringValue);
-							}
-							else
-							{
-								floatVar =
-									cursor.getFloat(cursor.getColumnIndex(getColumnName(field)));
-							}
-							if (floatVar != null)
-								field.setFloat(object, floatVar.floatValue());
-						}
-
-						else if (typeClass.equals(String.class))
-						{
-							field.set(object,
-								cursor.getString(cursor.getColumnIndex(getColumnName(field))));
-						}
-						else if (typeClass.equals(Boolean.class) || typeClass.equals(boolean.class))
-						{
-							Short boolVar = cursor.getShort(cursor.getColumnIndex(field.getName()));
-							if (boolVar != null)
-								field.setBoolean(object, boolVar == 0 ? false : true);
-						}
-						else if (typeClass.equals(byte.class))
-						{
-							byte[] byteVar = cursor.getBlob(cursor.getColumnIndex(field.getName()));
-							if (byteVar != null && byteVar.length > 0)
-								field.set(object, byteVar);
-						}
-						else if (field.getDeclaringClass().isAssignableFrom(IdObject.class))
-						{
-							IdObject entity = (IdObject) field.getDeclaringClass().newInstance();
-							entity
-								.setId(cursor.getLong(cursor.getColumnIndex(getColumnName(field))));
-							entity.setNeedUpdate(true);
-							field.set(object, entity);
-						}
-					}
-					catch (IllegalAccessException accEx)
-					{
-						Log.d(
-							Orm.class.getSimpleName() + "("
-								+ accEx.getStackTrace()[3].getLineNumber() + ")",
-							"illegal access: " + accEx.getMessage());
-					}
-					catch (IllegalArgumentException argEx)
-					{
-						Log.d(
-							Orm.class.getSimpleName() + "("
-								+ argEx.getStackTrace()[3].getLineNumber() + ")",
-							"illegal arguments: " + argEx.getMessage());
-					}
-					catch (InstantiationException instEx)
-					{
-						Log.d(Orm.class.getSimpleName(),
-							"can't creat new instance: " + instEx.getMessage());
-					}
-					field.setAccessible(flag);
-				}
-			}
-
-			clzz = clzz.getSuperclass();
-		}
-		return object;
-	}
-
-	@SuppressWarnings("unchecked")
-	private <T extends IdObject> T getNewInstanceOf(String className)
-	{
-		Class< ? > clazz = configuration.getClassMap().get(className);
-		if (clazz != null)
-		{
-			try
-			{
-				return (T) clazz.newInstance();
-			}
-			catch (IllegalAccessException accEx)
-			{
-				Log.d(Orm.class.getSimpleName() + "(" + accEx.getStackTrace()[3].getLineNumber()
-					+ ")", "illegal access: " + accEx.getMessage());
-			}
-			catch (InstantiationException instEx)
-			{
-				Log.d(Orm.class.getSimpleName(), "can't creat new instance: " + instEx.getMessage());
-			}
-		}
-		else
-		{
-			Log.d(Orm.class.getSimpleName(), "Class \"" + className + "\" is not registred.");
-		}
-		return null;
-	}
-
-	/**
-	 * based on {@link: http://www.sqlite.org/datatype3.html#affinity} and {@link:
-	 * http://www.sqlite.org/lang_createtable.html}
-	 */
-	private String generateColumnNameAndConstraint(Field field)
-	{
-		String query = getColumnName(field);
-		Class< ? > typeClass = field.getType();
-		if (typeClass.equals(Long.class) || typeClass.equals(long.class))
-			query += " INTEGER";
-		else if (typeClass.equals(Integer.class) || typeClass.equals(int.class))
-			query += " INTEGER";
-		else if (typeClass.equals(Double.class) || typeClass.equals(double.class))
-			query += " REAL";
-		else if (typeClass.equals(String.class))
-			query += " TEXT";
-		else if (typeClass.equals(Boolean.class) || typeClass.equals(boolean.class))
-			query += " INTEGER";
-		else if (typeClass.equals(byte.class))
-			query += " BLOB";
-		else if (typeClass.isEnum())
-			query += " TEXT";
-		else if (field.getDeclaringClass().isAssignableFrom(IdObject.class))
-		{
-			query += " INTEGER";
-			// TODO ff uitzoeken hoe we die isForeignLKeyEnabled het beste aan kunnen
-			// pakken.
-			if (configuration.isForeignKeyEnabled())
-				query += " REFERENCES " + getTableName(field.getDeclaringClass());
-		}
-		if (!field.getAnnotation(Column.class).nullable())
-			query += " NOT NULL";
-		if (field.getAnnotation(Column.class).unique())
-			query += " UNIQUE";
-		return query;
-	}
-
 	public void dropTable(String tableName)
 	{
 		String query = "DROP TABLE IF EXISTS " + tableName;
@@ -502,7 +123,15 @@ public class Orm
 	public void createTable(Class< ? extends IdObject> clazz)
 	{
 		String query = "CREATE TABLE " + getTableName(clazz) + "(" + DTYPE + " TEXT";
-		for (Field field : getTableColumnFields(clazz))
+		List<Field> fields = new ArrayList<Field>();
+		for (Class< ? > clzz : getSubClasses(clazz))
+		{
+			for (Field field : getTableColumnFields(clzz))
+				if (!fields.contains(field))
+					fields.add(field);
+		}
+
+		for (Field field : fields)
 		{
 			query += ',';
 			query += generateColumnNameAndConstraint(field);
@@ -621,5 +250,399 @@ public class Orm
 			return updateObject(object);
 		else
 			return saveObject(object);
+	}
+
+	private Session getSession()
+	{
+		if (configuration != null)
+			return configuration.getSession();
+		return null;
+	}
+
+	private List<Class< ? >> getSubClasses(Class< ? > clazz)
+	{
+		List<Class< ? >> result = new ArrayList<Class< ? >>();
+		result.add(clazz);
+
+		for (Class< ? > clzz : configuration.getClasses())
+		{
+			if (clazz.equals(clzz.getSuperclass()))
+			{
+				result.addAll(getSubClasses(clzz));
+			}
+		}
+
+		return result;
+	}
+
+	private <T extends IdObject> T fillObject(Cursor cursor)
+	{
+		T object = getNewInstanceOf(cursor.getString(cursor.getColumnIndex(DTYPE)));
+
+		Class< ? > clzz = object.getClass();
+		while (clzz.isAnnotationPresent(MappedSuperclass.class)
+			|| clzz.isAnnotationPresent(nl.spikey.orm.annotations.Entity.class))
+		{
+			Field[] fields = clzz.getDeclaredFields();
+
+			for (Field field : fields)
+			{
+				if (field.isAnnotationPresent(Column.class))
+				{
+					boolean flag = field.isAccessible();
+					field.setAccessible(true);
+
+					Class< ? > typeClass = field.getType();
+
+					try
+					{
+						if (typeClass.isPrimitive())
+						{
+							if (typeClass.equals(long.class))
+								field.setLong(object,
+									cursor.getLong(cursor.getColumnIndex(getColumnName(field))));
+							else if (typeClass.equals(int.class))
+								field.setInt(object,
+									cursor.getInt(cursor.getColumnIndex(getColumnName(field))));
+							else if (typeClass.equals(double.class))
+								field.setDouble(object,
+									cursor.getDouble(cursor.getColumnIndex(getColumnName(field))));
+							else if (typeClass.equals(float.class))
+								field.setFloat(object,
+									cursor.getFloat(cursor.getColumnIndex(getColumnName(field))));
+						}
+						else
+						{
+							if (typeClass.isEnum())
+							{
+								String enumConst =
+									cursor.getString(cursor.getColumnIndex(getColumnName(field)));
+								if (enumConst != null && !isNull(enumConst))
+								{
+									@SuppressWarnings({"unchecked", "rawtypes"})
+									Enum< ? > enumValue =
+										Enum.valueOf((Class< ? extends Enum>) typeClass, enumConst);
+									field.set(object, enumValue);
+								}
+							}
+							else if (typeClass.equals(Long.class))
+							{
+								if (typeClass.equals(Long.class))
+								{
+									String stringValue =
+										cursor.getString(cursor
+											.getColumnIndex(getColumnName(field)));
+									if (!isNull(stringValue))
+										field.set(object, Long.valueOf(stringValue));
+								}
+							}
+							else if (typeClass.equals(Integer.class))
+							{
+								if (typeClass.equals(Integer.class))
+								{
+									String stringValue =
+										cursor.getString(cursor
+											.getColumnIndex(getColumnName(field)));
+									if (!isNull(stringValue))
+										field.set(object, Integer.valueOf(stringValue));
+								}
+							}
+							else if (typeClass.equals(Double.class))
+							{
+								if (typeClass.equals(Double.class))
+								{
+									String stringValue =
+										cursor.getString(cursor
+											.getColumnIndex(getColumnName(field)));
+									if (!isNull(stringValue))
+										field.set(object, Double.valueOf(stringValue));
+								}
+							}
+							else if (typeClass.equals(Float.class))
+							{
+								if (typeClass.equals(Float.class))
+								{
+									String stringValue =
+										cursor.getString(cursor
+											.getColumnIndex(getColumnName(field)));
+									if (!isNull(stringValue))
+										field.set(object, Float.valueOf(stringValue));
+								}
+							}
+
+							else if (typeClass.equals(String.class))
+							{
+								field.set(object,
+									cursor.getString(cursor.getColumnIndex(getColumnName(field))));
+							}
+							else if (typeClass.equals(Boolean.class)
+								|| typeClass.equals(boolean.class))
+							{
+								Short boolVar =
+									cursor.getShort(cursor.getColumnIndex(field.getName()));
+								if (boolVar != null)
+									field.setBoolean(object, boolVar == 0 ? false : true);
+							}
+							else if (typeClass.equals(byte[].class))
+							{
+								byte[] byteVar =
+									cursor.getBlob(cursor.getColumnIndex(field.getName()));
+								if (byteVar != null && byteVar.length > 0)
+									field.set(object, byteVar);
+							}
+							else if (IdObject.class.isAssignableFrom(typeClass))
+							{
+								IdObject entity =
+									(IdObject) field.getDeclaringClass().newInstance();
+								entity.setId(cursor.getLong(cursor
+									.getColumnIndex(getColumnName(field))));
+								entity.setNeedUpdate(true);
+								field.set(object, entity);
+							}
+						}
+					}
+					catch (IllegalAccessException accEx)
+					{
+						Log.d(
+							Orm.class.getSimpleName() + "("
+								+ accEx.getStackTrace()[3].getLineNumber() + ")",
+							"illegal access: " + accEx.getMessage());
+					}
+					catch (IllegalArgumentException argEx)
+					{
+						Log.d(
+							Orm.class.getSimpleName() + "("
+								+ argEx.getStackTrace()[3].getLineNumber() + ")",
+							"illegal arguments: " + argEx.getMessage());
+					}
+					catch (InstantiationException instEx)
+					{
+						Log.d(Orm.class.getSimpleName(),
+							"can't creat new instance: " + instEx.getMessage());
+					}
+					field.setAccessible(flag);
+				}
+			}
+
+			clzz = clzz.getSuperclass();
+		}
+		return object;
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T extends IdObject> T getNewInstanceOf(String className)
+	{
+		Class< ? > clazz = configuration.getClassMap().get(className);
+		if (clazz != null)
+		{
+			try
+			{
+				return (T) clazz.newInstance();
+			}
+			catch (IllegalAccessException accEx)
+			{
+				Log.d(Orm.class.getSimpleName() + "(" + accEx.getStackTrace()[3].getLineNumber()
+					+ ")", "illegal access: " + accEx.getMessage());
+			}
+			catch (InstantiationException instEx)
+			{
+				Log.d(Orm.class.getSimpleName(), "can't creat new instance: " + instEx.getMessage());
+			}
+		}
+		else
+		{
+			Log.d(Orm.class.getSimpleName(), "Class \"" + className + "\" is not registred.");
+		}
+		return null;
+	}
+
+	/**
+	 * based on {@link: http://www.sqlite.org/datatype3.html#affinity} and {@link:
+	 * http://www.sqlite.org/lang_createtable.html}
+	 */
+	private String generateColumnNameAndConstraint(Field field)
+	{
+		String query = getColumnName(field);
+		Class< ? > typeClass = field.getType();
+		if (typeClass.equals(Long.class) || typeClass.equals(long.class))
+			query += " INTEGER";
+		else if (typeClass.equals(Integer.class) || typeClass.equals(int.class))
+			query += " INTEGER";
+		else if (typeClass.equals(Double.class) || typeClass.equals(double.class))
+			query += " REAL";
+		else if (typeClass.equals(String.class))
+			query += " TEXT";
+		else if (typeClass.equals(Boolean.class) || typeClass.equals(boolean.class))
+			query += " INTEGER";
+		else if (typeClass.equals(byte[].class))
+			query += " BLOB";
+		else if (typeClass.isEnum())
+			query += " TEXT";
+		else if (IdObject.class.isAssignableFrom(typeClass))
+		{
+			query += " INTEGER";
+			// TODO ff uitzoeken hoe we die isForeignLKeyEnabled het beste aan kunnen
+			// pakken.
+			if (configuration.isForeignKeyEnabled())
+				query += " REFERENCES " + getTableName(field.getDeclaringClass());
+		}
+		else
+		{
+			throw new UnKnownColumnTypeException("Field " + getColumnName(field)
+				+ " has @Column annotation, but is not supported as database ColumnType");
+		}
+		if (!field.getAnnotation(Column.class).nullable())
+			query += " NOT NULL";
+		if (field.getAnnotation(Column.class).unique())
+			query += " UNIQUE";
+		return query;
+	}
+
+	private static String getColumnName(Field field)
+	{
+		if (field.getAnnotation(Column.class).name().length() > 0)
+			return field.getAnnotation(Column.class).name();
+		return field.getName();
+	}
+
+	private static String getTableName(Class< ? > clazz)
+	{
+		return getTableClass(clazz).getSimpleName();
+	}
+
+	private static Class< ? > getTableClass(Class< ? > clazz)
+	{
+		if (clazz.getSuperclass().isAnnotationPresent(Entity.class))
+			return getTableClass(clazz.getSuperclass());
+		return clazz;
+	}
+
+	private static boolean isNull(String enumConst)
+	{
+		if (enumConst == null || enumConst.toLowerCase().equals(NULL.toLowerCase()))
+			return true;
+		return false;
+	}
+
+	private List<Field> getTableColumnFields(Class< ? > clazz)
+	{
+		List<Field> properties = new ArrayList<Field>();
+		while (clazz.isAnnotationPresent(MappedSuperclass.class)
+			|| clazz.isAnnotationPresent(Entity.class))
+		{
+			Field[] fields = clazz.getDeclaredFields();
+
+			for (Field field : fields)
+			{
+				if (field.isAnnotationPresent(Column.class))
+				{
+					if (!properties.contains(field))
+						properties.add(field);
+				}
+			}
+			clazz = clazz.getSuperclass();
+		}
+		return properties;
+	}
+
+	private <T extends IdObject> ContentValues getContentValuesForObject(T object)
+	{
+		ContentValues values = new ContentValues();
+		values.put(DTYPE, object.getClass().getSimpleName());
+		for (Field field : getTableColumnFields(object.getClass()))
+		{
+			if (field.isAnnotationPresent(Id.class))
+				continue;
+
+			boolean flag = field.isAccessible();
+			field.setAccessible(true);
+
+			try
+			{
+				Class< ? > typeClass = field.getType();
+				if (typeClass.equals(long.class))
+					values.put(getColumnName(field), field.getLong(object));
+				else if (typeClass.equals(int.class))
+					values.put(getColumnName(field), field.getInt(object));
+				else if (typeClass.equals(double.class))
+					values.put(getColumnName(field), field.getDouble(object));
+				else if (typeClass.equals(boolean.class))
+					values.put(getColumnName(field), field.getBoolean(object));
+				else if (typeClass.isEnum())
+				{
+					if (field.get(object) == null)
+						values.putNull(getColumnName(field));
+					else
+						values.put(getColumnName(field), field.get(object).toString());
+				}
+				else if (typeClass.equals(Long.class))
+				{
+					if (field.get(object) == null)
+						values.putNull(getColumnName(field));
+					else
+						values.put(getColumnName(field), (Long) field.get(object));
+				}
+				else if (typeClass.equals(Integer.class))
+				{
+					if (field.get(object) == null)
+						values.putNull(getColumnName(field));
+					else
+						values.put(getColumnName(field), (Integer) field.get(object));
+				}
+				else if (typeClass.equals(Double.class))
+				{
+					if (field.get(object) == null)
+						values.putNull(getColumnName(field));
+					else
+						values.put(getColumnName(field), (Double) field.get(object));
+				}
+				else if (typeClass.equals(String.class))
+				{
+					if (field.get(object) == null)
+						values.putNull(getColumnName(field));
+					else
+						values.put(getColumnName(field), field.get(object).toString());
+				}
+				else if (typeClass.equals(Boolean.class))
+				{
+					if (field.get(object) == null)
+						values.putNull(getColumnName(field));
+					else
+						values.put(getColumnName(field), (Boolean) field.get(object));
+				}
+				else if (typeClass.equals(byte[].class))
+				{
+					if (field.get(object) == null)
+						values.putNull(getColumnName(field));
+					else
+						values.put(getColumnName(field), (byte[]) field.get(object));
+				}
+				else if (IdObject.class.isAssignableFrom(typeClass))
+				{
+					if (field.get(object) == null)
+						values.putNull(getColumnName(field));
+					else
+					{
+						IdObject entity = (IdObject) field.get(object);
+						if (entity.getId() == null)
+							throw new ObjectNotSavedException("object reference not saved");
+						values.put(getColumnName(field), entity.getId());
+					}
+				}
+			}
+			catch (IllegalAccessException accEx)
+			{
+				Log.d(Orm.class.getSimpleName() + "(" + accEx.getStackTrace()[3].getLineNumber()
+					+ ")", "illegal access: " + accEx.getMessage());
+			}
+			catch (IllegalArgumentException argEx)
+			{
+				Log.d(Orm.class.getSimpleName() + "(" + argEx.getStackTrace()[3].getLineNumber()
+					+ ")", "illegal arguments: " + argEx.getMessage());
+			}
+
+			field.setAccessible(flag);
+		}
+		return values;
 	}
 }
