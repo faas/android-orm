@@ -1,6 +1,7 @@
 package nl.spikey.orm.engine;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -103,6 +104,30 @@ public class Orm
 		getSession().close();
 
 		return resultList;
+	}
+
+	public <T extends IdObject> T unique(Criteria criteria)
+	{
+
+		Cursor cursor = selectQuery(criteria);
+
+		List<T> resultList = new ArrayList<T>();
+		if (cursor != null && cursor.moveToFirst())
+		{
+			do
+			{
+				T object = fillObject(cursor);
+				resultList.add(object);
+			}
+			while (cursor.moveToNext());
+
+			cursor.close();
+		}
+		getSession().close();
+
+		if (resultList.size() == 1)
+			return resultList.get(0);
+		return null;
 	}
 
 	public void dropTable(String tableName)
@@ -392,11 +417,21 @@ public class Orm
 							}
 							else if (IdObject.class.isAssignableFrom(typeClass))
 							{
-								IdObject entity =
-									(IdObject) field.getDeclaringClass().newInstance();
-								entity.setId(cursor.getLong(cursor
-									.getColumnIndex(getColumnName(field))));
-								entity.setNeedUpdate(true);
+								@SuppressWarnings("unchecked")
+								Class< ? extends IdObject> explicitClass =
+									(Class< ? extends IdObject>) typeClass;
+								IdObject entity;
+								if (!Modifier.isAbstract(explicitClass.getModifiers()))
+								{
+									entity = explicitClass.newInstance();
+									entity.setId(cursor.getLong(cursor
+										.getColumnIndex(getColumnName(field))));
+									entity.setNeedUpdate(true);
+								}
+								else
+									entity =
+										uniqueLazyObject(explicitClass, cursor.getLong(cursor
+											.getColumnIndex(getColumnName(field))));
 								field.set(object, entity);
 							}
 						}
@@ -644,5 +679,55 @@ public class Orm
 			field.setAccessible(flag);
 		}
 		return values;
+	}
+
+	// -- TODO: maybe replace the following code by proxies.
+
+	private <T extends IdObject> T uniqueLazyObject(Class<T> clzz, long id)
+	{
+		Criteria criteria = new Criteria(clzz);
+		criteria.addEquals(getColumnName(getIdColumnField(clzz)), id);
+		Cursor cursor = selectQuery(criteria);
+
+		List<T> resultList = new ArrayList<T>();
+		if (cursor != null && cursor.moveToFirst())
+		{
+			do
+			{
+				T object = getNewInstanceOf(cursor.getString(cursor.getColumnIndex(DTYPE)));
+				// INFO: this looks a bit tricky, but if everything is right, this is the
+				// only object to return because its filtered by id.
+				object.setId(id);
+				object.setNeedUpdate(true);
+				resultList.add(object);
+			}
+			while (cursor.moveToNext());
+
+			cursor.close();
+		}
+		getSession().close();
+
+		if (resultList.size() == 1)
+			return resultList.get(0);
+		return null;
+	}
+
+	private Field getIdColumnField(Class< ? > clazz)
+	{
+		while (clazz.isAnnotationPresent(MappedSuperclass.class)
+			|| clazz.isAnnotationPresent(Entity.class))
+		{
+			Field[] fields = clazz.getDeclaredFields();
+
+			for (Field field : fields)
+			{
+				if (field.isAnnotationPresent(Id.class))
+				{
+					return field;
+				}
+			}
+			clazz = clazz.getSuperclass();
+		}
+		return null;
 	}
 }
