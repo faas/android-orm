@@ -22,6 +22,10 @@ public class Configuration
 		this.setSession(session);
 	}
 
+	/**
+	 * By using this methode you register a class to the orm. All classes that have the @Entity
+	 * annotation should be registered.
+	 */
 	public void addAnnotatedClass(Class< ? extends IdObject> clazz)
 	{
 		classes.put(clazz.getSimpleName(), clazz);
@@ -47,6 +51,12 @@ public class Configuration
 		return foreignKeyEnabled;
 	}
 
+	/**
+	 * Using this setting foreignkey's can be enabled, this will decrease the performance
+	 * but can guarantee some constraints will not be violated.
+	 * 
+	 * TODO: currently this foreignkey's are not supported
+	 */
 	public void setForeignKeyEnabled(boolean foreignKeyEnabled)
 	{
 		this.foreignKeyEnabled = foreignKeyEnabled;
@@ -57,6 +67,13 @@ public class Configuration
 		return session;
 	}
 
+	/**
+	 * Because the ORM has no knowledge of what type of database you use, you need to
+	 * register a session(manager) which will provide the ORM with the needed database
+	 * functions.
+	 * 
+	 * This will register the session(manager) to the ORM
+	 */
 	public void setSession(Session session)
 	{
 		this.session = session;
