@@ -33,12 +33,16 @@ public class Orm
 
 	public Cursor selectQuery(Criteria criteria)
 	{
+		return selectQuery(criteria, null); // is all columns
+	}
+
+	public Cursor selectQuery(Criteria criteria, String[] columns)
+	{
 		Class< ? extends IdObject> clazz = criteria.getClzz();
 		if (!clazz.isAnnotationPresent(Entity.class))
 			return null;
 		String table = getTableName(clazz);
 
-		String[] columns = null; // is all columns
 		String selection = "";
 		List<String> selectionArgs = new ArrayList<String>();
 		// check if clazz is a subclass of the table class
@@ -687,7 +691,7 @@ public class Orm
 	{
 		Criteria criteria = new Criteria(clzz);
 		criteria.addEquals(getColumnName(getIdColumnField(clzz)), id);
-		Cursor cursor = selectQuery(criteria);
+		Cursor cursor = selectQuery(criteria, new String[] {DTYPE});
 
 		List<T> resultList = new ArrayList<T>();
 		if (cursor != null && cursor.moveToFirst())
@@ -696,7 +700,7 @@ public class Orm
 			{
 				T object = getNewInstanceOf(cursor.getString(cursor.getColumnIndex(DTYPE)));
 				// INFO: this looks a bit tricky, but if everything is right, this is the
-				// only object to return because its filtered by id.
+				// only object to return because its filtered by database id.
 				object.setId(id);
 				object.setNeedUpdate(true);
 				resultList.add(object);
