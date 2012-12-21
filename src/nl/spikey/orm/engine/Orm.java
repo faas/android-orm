@@ -80,7 +80,8 @@ public class Orm
 
 	public int count(Criteria criteria)
 	{
-		Cursor cursor = selectQuery(criteria);
+		// TODO: Optimalisation by using somthing like count(*)
+		Cursor cursor = selectQuery(criteria, new String[] {DTYPE});
 		int result = 0;
 		if (cursor != null)
 			result = cursor.getCount();
