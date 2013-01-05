@@ -422,22 +422,24 @@ public class Orm
 							}
 							else if (IdObject.class.isAssignableFrom(typeClass))
 							{
-								@SuppressWarnings("unchecked")
-								Class< ? extends IdObject> explicitClass =
-									(Class< ? extends IdObject>) typeClass;
-								IdObject entity;
-								if (!Modifier.isAbstract(explicitClass.getModifiers()))
+								String id =
+									cursor.getString(cursor.getColumnIndex(getColumnName(field)));
+								if (!isNull(id))
 								{
-									entity = explicitClass.newInstance();
-									entity.setId(cursor.getLong(cursor
-										.getColumnIndex(getColumnName(field))));
-									entity.setNeedUpdate(true);
+									@SuppressWarnings("unchecked")
+									Class< ? extends IdObject> explicitClass =
+										(Class< ? extends IdObject>) typeClass;
+									IdObject entity;
+									if (!Modifier.isAbstract(explicitClass.getModifiers()))
+									{
+										entity = explicitClass.newInstance();
+										entity.setId(Long.valueOf(id));
+										entity.setNeedUpdate(true);
+									}
+									else
+										entity = uniqueLazyObject(explicitClass, Long.valueOf(id));
+									field.set(object, entity);
 								}
-								else
-									entity =
-										uniqueLazyObject(explicitClass, cursor.getLong(cursor
-											.getColumnIndex(getColumnName(field))));
-								field.set(object, entity);
 							}
 						}
 					}
