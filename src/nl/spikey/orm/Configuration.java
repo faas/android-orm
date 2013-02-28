@@ -55,7 +55,7 @@ public class Configuration
 	 * Using this setting foreignkey's can be enabled, this will decrease the performance
 	 * but can guarantee some constraints will not be violated.
 	 * 
-	 * TODO: currently this foreignkey's are not supported
+	 * TODO: [ORM] currently this foreignkey's are not supported
 	 */
 	public void setForeignKeyEnabled(boolean foreignKeyEnabled)
 	{

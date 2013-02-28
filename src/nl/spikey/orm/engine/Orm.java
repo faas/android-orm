@@ -80,7 +80,7 @@ public class Orm
 
 	public int count(Criteria criteria)
 	{
-		// TODO: Optimalisation by using somthing like count(*)
+		// TODO: [ORM] Optimalisation by using somthing like count(*)
 		Cursor cursor = selectQuery(criteria, new String[] {DTYPE});
 		int result = 0;
 		if (cursor != null)
@@ -192,7 +192,7 @@ public class Orm
 		getSession().execSQL(query);
 	}
 
-	// TODO misschien nog een rename column?
+	// LOW: [ORM] misschien nog een rename column?
 
 	/**
 	 * This function deletes the object from the database. Keep in mind that objects
@@ -523,7 +523,8 @@ public class Orm
 		else if (IdObject.class.isAssignableFrom(typeClass))
 		{
 			query += " INTEGER";
-			// TODO ff uitzoeken hoe we die isForeignLKeyEnabled het beste aan kunnen
+			// TODO [ORM] ff uitzoeken hoe we die isForeignLKeyEnabled het beste aan
+			// kunnen
 			// pakken.
 			if (configuration.isForeignKeyEnabled())
 				query += " REFERENCES " + getTableName(field.getDeclaringClass());
@@ -688,7 +689,7 @@ public class Orm
 		return values;
 	}
 
-	// -- TODO: maybe replace the following code by proxies.
+	// -- LOW: [ORM] maybe replace the following code by proxies.
 
 	private <T extends IdObject> T uniqueLazyObject(Class<T> clzz, long id)
 	{
@@ -702,8 +703,8 @@ public class Orm
 			do
 			{
 				T object = getNewInstanceOf(cursor.getString(cursor.getColumnIndex(DTYPE)));
-				// INFO: this looks a bit tricky, but if everything is right, this is the
-				// only object to return because its filtered by database id.
+				// INFO: [ORM] this looks a bit tricky, but if everything is right, this
+				// is the only object to return because its filtered by database id.
 				object.setId(id);
 				object.setNeedUpdate(true);
 				resultList.add(object);
