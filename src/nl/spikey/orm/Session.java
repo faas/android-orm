@@ -22,9 +22,11 @@ public interface Session
 	public Cursor query(String table, String[] columns, String selection, String[] selectionArgs,
 			String groupBy, String having, String orderBy, String limit);
 
-	public void close();
+	public Cursor rawQuery(String sql, String[] selectionArgs);
 
 	public void execSQL(String sql);
+
+	public void close();
 
 	public int delete(String table, String whereClause, String[] whereArgs);
 

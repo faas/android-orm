@@ -45,29 +45,7 @@ public class Orm
 
 		String selection = "";
 		List<String> selectionArgs = new ArrayList<String>();
-		// check if clazz is a subclass of the table class
-		if (!table.equals(clazz.getSimpleName()))
-		{
-			// clazz and table are not the same, so clazz is a subclass of table, if clazz
-			// has more subclasses than add these classes to DTYPE query.
-			for (Class< ? > dtype : getSubClasses(clazz))
-			{
-				// als clazz nog subclasses heeft deze toevoegen aan dtype selection
-				selection += DTYPE + "=? OR ";
-				selectionArgs.add(dtype.getSimpleName());
-			}
-			selection = selection.substring(0, selection.length() - 4);
-			selection += " AND ";
-		}
-
-		for (Criterion criterion : criteria.getCriterion())
-		{
-			selection += criterion.getExpression() + " AND ";
-			if (criterion.getArguments() != null && !criterion.getArguments().isEmpty())
-				selectionArgs.addAll(criterion.getArguments());
-		}
-		if (selection.length() > 4)
-			selection = selection.substring(0, selection.length() - 5);
+		selection = extractWhereClause(criteria, selectionArgs);
 
 		String groupBy = null;
 		String having = null;
@@ -80,11 +58,16 @@ public class Orm
 
 	public int count(Criteria criteria)
 	{
-		// TODO: [ORM] Optimalisation by using somthing like count(*)
-		Cursor cursor = selectQuery(criteria, new String[] {DTYPE});
+		String query = "SELECT count(*) FROM ";
+		query += getTableName(criteria.getClzz());
+
+		List<String> selectionArgs = new ArrayList<String>();
+		query += " WHERE " + extractWhereClause(criteria, selectionArgs);
+
+		Cursor cursor = getSession().rawQuery(query, selectionArgs.toArray(new String[0]));
 		int result = 0;
 		if (cursor != null)
-			result = cursor.getCount();
+			result = cursor.getInt(0);
 		getSession().close();
 		return result;
 	}
@@ -524,8 +507,7 @@ public class Orm
 		{
 			query += " INTEGER";
 			// TODO [ORM] ff uitzoeken hoe we die isForeignLKeyEnabled het beste aan
-			// kunnen
-			// pakken.
+			// kunnen pakken.
 			if (configuration.isForeignKeyEnabled())
 				query += " REFERENCES " + getTableName(field.getDeclaringClass());
 		}
@@ -703,7 +685,7 @@ public class Orm
 			do
 			{
 				T object = getNewInstanceOf(cursor.getString(cursor.getColumnIndex(DTYPE)));
-				// INFO: [ORM] this looks a bit tricky, but if everything is right, this
+				// This might look a bit tricky, but if everything is right, this
 				// is the only object to return because its filtered by database id.
 				object.setId(id);
 				object.setNeedUpdate(true);
@@ -738,4 +720,48 @@ public class Orm
 		}
 		return null;
 	}
+
+	/**
+	 * Returns the complete where clause (excluding 'WHERE') based on the criteria given
+	 * 
+	 * @param criteria
+	 *            Criteria from what the where clause will be extracted.
+	 * @param selectionArgs
+	 *            A List to which the needed arguments will be added.
+	 * @return A String containing the where clause based on the criteria.
+	 */
+	private String extractWhereClause(Criteria criteria, List<String> selectionArgs)
+	{
+		Class< ? extends IdObject> clazz = criteria.getClzz();
+		if (!clazz.isAnnotationPresent(Entity.class))
+			return null;
+		String table = getTableName(clazz);
+
+		String selection = "";
+		// check if clazz is a subclass of the table class
+		if (!table.equals(clazz.getSimpleName()))
+		{
+			// clazz and table are not the same, so clazz is a subclass of table, if clazz
+			// has more subclasses than add these classes to DTYPE query.
+			for (Class< ? > dtype : getSubClasses(clazz))
+			{
+				// als clazz nog subclasses heeft deze toevoegen aan dtype selection
+				selection += DTYPE + "=? OR ";
+				selectionArgs.add(dtype.getSimpleName());
+			}
+			selection = selection.substring(0, selection.length() - 4);
+			selection += " AND ";
+		}
+
+		for (Criterion criterion : criteria.getCriterion())
+		{
+			selection += criterion.getExpression() + " AND ";
+			if (criterion.getArguments() != null && !criterion.getArguments().isEmpty())
+				selectionArgs.addAll(criterion.getArguments());
+		}
+		if (selection.length() > 4)
+			selection = selection.substring(0, selection.length() - 5);
+		return selection;
+	}
+
 }
