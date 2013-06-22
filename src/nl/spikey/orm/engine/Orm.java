@@ -66,7 +66,7 @@ public class Orm
 
 		Cursor cursor = getSession().rawQuery(query, selectionArgs.toArray(new String[0]));
 		int result = 0;
-		if (cursor != null)
+		if (cursor != null && cursor.moveToFirst())
 			result = cursor.getInt(0);
 		getSession().close();
 		return result;
@@ -94,8 +94,11 @@ public class Orm
 		return resultList;
 	}
 
-	public <T extends IdObject> T unique(Criteria criteria)
+	public <T extends IdObject> T unique(Criteria criteria) throws NotUniqueException
 	{
+		int count = count(criteria);
+		if (count > 1)
+			throw new NotUniqueException("Criteria resulted in " + count + " results.");
 
 		Cursor cursor = selectQuery(criteria);
 
@@ -485,7 +488,7 @@ public class Orm
 	 * based on {@link: http://www.sqlite.org/datatype3.html#affinity} and {@link:
 	 * http://www.sqlite.org/lang_createtable.html}
 	 */
-	private String generateColumnNameAndConstraint(Field field)
+	private String generateColumnNameAndConstraint(Field field) throws UnknownColumnTypeException
 	{
 		String query = getColumnName(field);
 		Class< ? > typeClass = field.getType();
@@ -513,7 +516,7 @@ public class Orm
 		}
 		else
 		{
-			throw new UnKnownColumnTypeException("Field " + getColumnName(field)
+			throw new UnknownColumnTypeException("Field " + getColumnName(field)
 				+ " has @Column annotation, but is not supported as database ColumnType");
 		}
 		if (!field.getAnnotation(Column.class).nullable())
