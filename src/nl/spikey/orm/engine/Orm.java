@@ -67,7 +67,11 @@ public class Orm
 		Cursor cursor = getSession().rawQuery(query, selectionArgs.toArray(new String[0]));
 		int result = 0;
 		if (cursor != null && cursor.moveToFirst())
+		{
 			result = cursor.getInt(0);
+		}
+		if (cursor != null && !cursor.isClosed())
+			cursor.close();
 		getSession().close();
 		return result;
 	}
@@ -86,9 +90,9 @@ public class Orm
 				resultList.add(object);
 			}
 			while (cursor.moveToNext());
-
-			cursor.close();
 		}
+		if (cursor != null && !cursor.isClosed())
+			cursor.close();
 		getSession().close();
 
 		return resultList;
@@ -111,9 +115,9 @@ public class Orm
 				resultList.add(object);
 			}
 			while (cursor.moveToNext());
-
-			cursor.close();
 		}
+		if (cursor != null && !cursor.isClosed())
+			cursor.close();
 		getSession().close();
 
 		if (resultList.size() == 1)
