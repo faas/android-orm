@@ -16,8 +16,7 @@ public interface Session
 	 * Calls a query at the database and returns a Cursor to the database.
 	 * 
 	 * NOTE: this is the only method that should not be closed by the implementing class.
-	 * The ORM will close the database when the Returning Cursor isn't beeing used
-	 * anymore.
+	 * The ORM will close the database when the Returning Cursor isn't being used anymore.
 	 */
 	public Cursor query(String table, String[] columns, String selection, String[] selectionArgs,
 			String groupBy, String having, String orderBy, String limit);
@@ -34,4 +33,9 @@ public interface Session
 
 	public int update(String table, ContentValues values, String whereClause, String[] whereArgs);
 
+	public void beginTransaction();
+
+	public void commit();
+
+	public void rollback();
 }

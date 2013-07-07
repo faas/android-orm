@@ -11,6 +11,7 @@ import nl.spikey.orm.Session;
 import nl.spikey.orm.annotations.Column;
 import nl.spikey.orm.annotations.Entity;
 import nl.spikey.orm.annotations.Id;
+import nl.spikey.orm.annotations.Index;
 import nl.spikey.orm.annotations.MappedSuperclass;
 import nl.spikey.orm.criteria.Criteria;
 import nl.spikey.orm.criteria.Criterion;
@@ -78,7 +79,6 @@ public class Orm
 
 	public <T extends IdObject> List<T> list(Criteria criteria)
 	{
-
 		Cursor cursor = selectQuery(criteria);
 
 		List<T> resultList = new ArrayList<T>();
@@ -162,6 +162,40 @@ public class Orm
 		getSession().execSQL(query);
 	}
 
+	public void createIndex(Class< ? extends IdObject> clazz)
+	{
+		List<Field> fields = new ArrayList<Field>();
+		List<String> indexeQueries = new ArrayList<String>();
+		for (Class< ? > clzz : getSubClasses(clazz))
+		{
+			for (Field field : getTableColumnFields(clzz))
+				if (!fields.contains(field))
+					fields.add(field);
+		}
+
+		for (Field field : fields)
+		{
+			if (field.isAnnotationPresent(Index.class))
+			{
+				StringBuilder indexQuery = new StringBuilder("CREATE ");
+				if (field.getAnnotation(Index.class).unique())
+					indexQuery.append("UNIQUE ");
+				indexQuery.append("INDEX ");
+				if (field.getAnnotation(Index.class).name() != null
+					&& !field.getAnnotation(Index.class).name().isEmpty())
+					indexQuery.append(field.getAnnotation(Index.class).name());
+				else
+					indexQuery.append(getTableName(clazz) + "_" + getColumnName(field) + "_index");
+				indexQuery.append(" ON " + getTableName(clazz) + "(" + getColumnName(field) + ")");
+				indexeQueries.add(indexQuery.toString());
+			}
+		}
+		for (String indexQuery : indexeQueries)
+		{
+			getSession().execSQL(indexQuery);
+		}
+	}
+
 	public void dropAndRecreateTable(Class< ? extends IdObject> clazz)
 	{
 		dropTable(clazz.getSimpleName());
@@ -204,6 +238,21 @@ public class Orm
 				new String[] {object.getId().toString()});
 
 		return (result == 1);
+	}
+
+	public void beginTransaction()
+	{
+		getSession().beginTransaction();
+	}
+
+	public void commit()
+	{
+		getSession().commit();
+	}
+
+	public void rollback()
+	{
+		getSession().rollback();
 	}
 
 	/**
