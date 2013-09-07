@@ -11,9 +11,14 @@ Proguard
 --------
 
 This is still in testing phase (like the whole project actually ;)), but it is very easely possible to use proguard. 
-Add the following rules to you proguard config:
+If have used the `name` properties of `@Entity` and `@Column` annotations consequenlty you can add the following rules to you proguard config:
 
     -keep interface nl.spikey.orm.annotations.Column { *; }
     -keepclassmembers class * {
         @nl.spikey.orm.annotations.Column *;
     }
+
+
+Otherwise I would suggest adding all you're entities in a 'entity' path and exclude all those classes of the proguard using:
+
+    -keep my.apps.entities.** { *; }
