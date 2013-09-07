@@ -125,6 +125,9 @@ public class Orm
 		return null;
 	}
 
+	/**
+	 * Drops table with tableName if exists
+	 */
 	public void dropTable(String tableName)
 	{
 		String query = "DROP TABLE IF EXISTS " + tableName;
@@ -196,9 +199,40 @@ public class Orm
 		}
 	}
 
+	public void dropIndex(Class< ? extends IdObject> clazz)
+	{
+		List<Field> fields = new ArrayList<Field>();
+		List<String> indexeQueries = new ArrayList<String>();
+		for (Class< ? > clzz : getSubClasses(clazz))
+		{
+			for (Field field : getTableColumnFields(clzz))
+				if (!fields.contains(field))
+					fields.add(field);
+		}
+
+		for (Field field : fields)
+		{
+			if (field.isAnnotationPresent(Index.class))
+			{
+				StringBuilder indexQuery = new StringBuilder("DROP ");
+				indexQuery.append("INDEX IF EXISTS ");
+				if (field.getAnnotation(Index.class).name() != null
+					&& !field.getAnnotation(Index.class).name().isEmpty())
+					indexQuery.append(field.getAnnotation(Index.class).name());
+				else
+					indexQuery.append(getTableName(clazz) + "_" + getColumnName(field) + "_index");
+				indexeQueries.add(indexQuery.toString());
+			}
+		}
+		for (String indexQuery : indexeQueries)
+		{
+			getSession().execSQL(indexQuery);
+		}
+	}
+
 	public void dropAndRecreateTable(Class< ? extends IdObject> clazz)
 	{
-		dropTable(clazz.getSimpleName());
+		dropTable(getTableName(clazz));
 		createTable(clazz);
 	}
 
@@ -208,7 +242,7 @@ public class Orm
 
 		for (Field field : getTableColumnFields(clazz))
 		{
-			if (field.getName().equals(propertyName))
+			if (getColumnName(field).equals(propertyName))
 			{
 				query += generateColumnNameAndConstraint(field);
 			}
@@ -448,14 +482,14 @@ public class Orm
 								|| typeClass.equals(boolean.class))
 							{
 								Short boolVar =
-									cursor.getShort(cursor.getColumnIndex(field.getName()));
+									cursor.getShort(cursor.getColumnIndex(getColumnName(field)));
 								if (boolVar != null)
 									field.setBoolean(object, boolVar == 0 ? false : true);
 							}
 							else if (typeClass.equals(byte[].class))
 							{
 								byte[] byteVar =
-									cursor.getBlob(cursor.getColumnIndex(field.getName()));
+									cursor.getBlob(cursor.getColumnIndex(getColumnName(field)));
 								if (byteVar != null && byteVar.length > 0)
 									field.set(object, byteVar);
 							}
@@ -588,7 +622,10 @@ public class Orm
 
 	private static String getTableName(Class< ? > clazz)
 	{
-		return getTableClass(clazz).getSimpleName();
+		Class< ? > tableClass = getTableClass(clazz);
+		if (tableClass.getAnnotation(Entity.class).name().length() > 0)
+			return tableClass.getAnnotation(Entity.class).name();
+		return tableClass.getSimpleName();
 	}
 
 	private static Class< ? > getTableClass(Class< ? > clazz)
@@ -792,10 +829,13 @@ public class Orm
 		if (!clazz.isAnnotationPresent(Entity.class))
 			return null;
 		String table = getTableName(clazz);
+		String entityName = clazz.getSimpleName();
+		if (clazz.getAnnotation(Entity.class).name().length() > 0)
+			entityName = clazz.getAnnotation(Entity.class).name();
 
 		String selection = "";
 		// check if clazz is a subclass of the table class
-		if (!table.equals(clazz.getSimpleName()))
+		if (!table.equals(entityName))
 		{
 			// clazz and table are not the same, so clazz is a subclass of table, if clazz
 			// has more subclasses than add these classes to DTYPE query.

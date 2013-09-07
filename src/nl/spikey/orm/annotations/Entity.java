@@ -37,8 +37,8 @@ public @interface Entity
 
 	/**
 	 * (Optional) The entity name. Defaults to the unqualified name of the entity class.
-	 * This name is used to refer to the entity in queries. The name must not be a
-	 * reserved literal in the Java Persistence query language.
+	 * This name is used to refer to the entity in queries. Also the database table will
+	 * created with this name.
 	 */
 	String name() default "";
 }
