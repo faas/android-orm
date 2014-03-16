@@ -4,6 +4,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import nl.spikey.orm.Configuration;
 import nl.spikey.orm.IdObject;
@@ -185,7 +186,7 @@ public class Orm
 					indexQuery.append("UNIQUE ");
 				indexQuery.append("INDEX ");
 				if (field.getAnnotation(Index.class).name() != null
-					&& !field.getAnnotation(Index.class).name().isEmpty())
+					&& field.getAnnotation(Index.class).name().length() > 0)
 					indexQuery.append(field.getAnnotation(Index.class).name());
 				else
 					indexQuery.append(getTableName(clazz) + "_" + getColumnName(field) + "_index");
@@ -217,7 +218,7 @@ public class Orm
 				StringBuilder indexQuery = new StringBuilder("DROP ");
 				indexQuery.append("INDEX IF EXISTS ");
 				if (field.getAnnotation(Index.class).name() != null
-					&& !field.getAnnotation(Index.class).name().isEmpty())
+					&& field.getAnnotation(Index.class).name().length() > 0)
 					indexQuery.append(field.getAnnotation(Index.class).name());
 				else
 					indexQuery.append(getTableName(clazz) + "_" + getColumnName(field) + "_index");
@@ -238,7 +239,7 @@ public class Orm
 
 	public void addColumnFor(Class< ? extends IdObject> clazz, String propertyName)
 	{
-		String query = "ALTER TABLE " + getTableName(clazz) + " ADD COLUMN";
+		String query = "ALTER TABLE " + getTableName(clazz) + " ADD COLUMN ";
 
 		for (Field field : getTableColumnFields(clazz))
 		{
@@ -637,7 +638,8 @@ public class Orm
 
 	private static boolean isNull(String enumConst)
 	{
-		if (enumConst == null || enumConst.toLowerCase().equals(NULL.toLowerCase()))
+		if (enumConst == null
+			|| enumConst.toLowerCase(Locale.ENGLISH).equals(NULL.toLowerCase(Locale.ENGLISH)))
 			return true;
 		return false;
 	}
