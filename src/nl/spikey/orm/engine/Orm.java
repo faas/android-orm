@@ -356,6 +356,13 @@ public class Orm
 			return saveObject(object);
 	}
 
+	public int getDatabaseVersion()
+	{
+		if (getSession() != null)
+			return getSession().getVersion();
+		return 0;
+	}
+
 	private Session getSession()
 	{
 		if (configuration != null)

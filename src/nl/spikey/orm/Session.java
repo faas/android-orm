@@ -38,4 +38,6 @@ public interface Session
 	public void commit();
 
 	public void rollback();
+
+	public int getVersion();
 }
