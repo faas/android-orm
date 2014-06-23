@@ -237,7 +237,7 @@ public class Orm
 		createTable(clazz);
 	}
 
-	public void addColumnFor(Class< ? extends IdObject> clazz, String propertyName)
+	private String addColumnForQuery(Class< ? extends IdObject> clazz, String propertyName)
 	{
 		String query = "ALTER TABLE " + getTableName(clazz) + " ADD COLUMN ";
 
@@ -248,7 +248,22 @@ public class Orm
 				query += generateColumnNameAndConstraint(field);
 			}
 		}
+		return query;
+	}
+
+	public void addColumnFor(Class< ? extends IdObject> clazz, String propertyName,
+			String defaultValue)
+	{
+		String query = addColumnForQuery(clazz, propertyName);
+		if (defaultValue != null && !defaultValue.isEmpty())
+			query += " DEFAULT (" + defaultValue + ")";
+
 		getSession().execSQL(query);
+	}
+
+	public void addColumnFor(Class< ? extends IdObject> clazz, String propertyName)
+	{
+		getSession().execSQL(addColumnForQuery(clazz, propertyName));
 	}
 
 	// LOW: [ORM] misschien nog een rename column?
