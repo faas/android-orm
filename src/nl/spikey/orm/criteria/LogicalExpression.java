@@ -37,4 +37,11 @@ public class LogicalExpression implements Criterion
 
 		return arguments;
 	}
+
+	@Override
+	public String toString()
+	{
+		return "(" + criterion1.toString() + " " + operator + " " + criterion2.toString()
+				+ ")";
+	}
 }

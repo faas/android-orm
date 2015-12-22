@@ -41,4 +41,9 @@ class NotInExpression implements Criterion
 		return null;
 	}
 
+	@Override
+	public String toString()
+	{
+		return getExpression();
+	}
 }

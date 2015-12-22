@@ -23,4 +23,10 @@ class NotExpression implements Criterion
 	{
 		return criterion.getArguments();
 	}
+
+	@Override
+	public String toString()
+	{
+		return "NOT " + criterion.toString();
+	}
 }

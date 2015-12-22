@@ -171,4 +171,15 @@ public class Criteria
 			criterion.add(ors);
 		}
 	}
+
+	@Override
+	public String toString()
+	{
+		StringBuilder criteaString = new StringBuilder();
+		for(Criterion crit : criterion){
+			criteaString.append(", ");
+			criteaString.append(crit.toString());
+		}
+		return criteaString.toString();
+	}
 }

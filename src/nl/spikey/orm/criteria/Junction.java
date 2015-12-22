@@ -97,4 +97,25 @@ public class Junction implements Criterion
 
 		return arguments;
 	}
+
+	@Override
+	public String toString()
+	{
+		if (criterions.size() == 0)
+		{
+			return "";
+		}
+
+		StringBuilder buffer = new StringBuilder().append('(');
+		Iterator<Criterion> itr = criterions.iterator();
+		while (itr.hasNext())
+		{
+			buffer.append(itr.next().toString());
+			if (itr.hasNext())
+			{
+				buffer.append(' ').append(nature.getOperator()).append(' ');
+			}
+		}
+		return buffer.append(')').toString();
+	}
 }

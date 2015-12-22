@@ -35,4 +35,10 @@ class SimpleExpression implements Criterion
 	{
 		return Arrays.asList(value);
 	}
+
+	@Override
+	public String toString()
+	{
+		return property + operator + value;
+	}
 }
