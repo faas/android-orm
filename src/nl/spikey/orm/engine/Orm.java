@@ -404,6 +404,7 @@ public class Orm
 	private <T extends IdObject> T fillObject(Cursor cursor)
 	{
 		T object = getNewInstanceOf(cursor.getString(cursor.getColumnIndex(DTYPE)));
+		object.setNeedUpdate(false);
 
 		Class< ? > clzz = object.getClass();
 		while (clzz.isAnnotationPresent(MappedSuperclass.class)
